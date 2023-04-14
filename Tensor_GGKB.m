@@ -1,0 +1,52 @@
+function [X,mu,m]=Tensor_GGKB(AA,BB,B,mu0,eta,s)
+[M,N,k]=size(double(B));
+m=2;
+V=zeros(M,N,k,m);
+t=tnorm(B)^2;
+sigma1=tnorm(B);
+U1=B/sigma1;
+VV= operator(AA,BB,U1);
+rho1=tnorm(VV);
+V1=VV/rho1;
+V(:,:,:,1)=V1;
+C_gauss(1,1)=rho1;
+W= operator(AA,BB,V1)-rho1*U1;
+sigma=tnorm(W);
+U1=W/sigma;
+C_gauss(2,1)=sigma;
+W= operator(AA,BB,U1)-sigma*V1;
+rho=tnorm(W);
+C_gauss(2,2)=rho;
+V1=W/rho;
+V(:,:,:,2)=V1;
+mu=newton(C_gauss',m,t,mu0,eta,s);
+W= operator(AA,BB,V1)-rho*U1;
+sigma=tnorm(W);
+U1=W/sigma;
+C_gauss(3,2)=sigma;
+C_radau=C_gauss;
+ while (phi_radau(C_radau',m,mu,t)>eta^2*s^2 && m<100)
+     m=m+1;
+     W= operator(AA,BB,U1)-sigma*V1;
+     rho=tnorm(W);
+     C_gauss(m,m)=rho;
+     V1=W/rho;
+     V(:,:,:,m)=V1;
+     mu=newton(C_gauss',m,t,mu,eta,s);
+     W= operator(AA,BB,V1)-rho*U1;
+     sigma=tnorm(W);
+     U1=W/sigma;
+     C_gauss(m+1,m)=sigma;
+     C_radau=C_gauss;
+ end
+
+%y=inv(C_radau'*C_radau+(1/mu)*eye(l,l))*sigma1*rho1*eye(l,1);
+D=[sqrt(mu)*C_radau;eye(m)];
+d=[sqrt(mu)*sqrt(t)*eye(m+1,1);zeros(m,1)];
+[Q,R]=qr(D);
+y=R\(Q'*d);
+X=zeros(M,N,k);
+for jj=1:m
+    X=X+V(:,:,:,jj)*y(jj);
+end
+%err_r=norm(EXACTSOL-X,'fro')/norm(EXACTSOL,'fro');
